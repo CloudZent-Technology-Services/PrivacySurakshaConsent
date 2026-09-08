@@ -1,8 +1,8 @@
 # PrivacySurakshaConsent — iOS
 
 The DPDP consent notice for an iOS app. It is the same notice a website
-visitor sees, because it is the same code: `packages/banner`, compiled for an
-app and shown in a `WKWebView`.
+visitor sees, because it is the same underlying banner code, compiled and
+bundled into this package and shown in a `WKWebView`.
 
 ## Requirements
 
@@ -19,6 +19,7 @@ Or in your `Package.swift`:
 
 ```swift
 dependencies: [
+    // TODO: replace <org>/<repo> with this package's actual GitHub location.
     .package(url: "https://github.com/<org>/<repo>", from: "0.1.0"),
 ],
 targets: [
@@ -119,12 +120,7 @@ never cost the record.
 
 ## Things you should know
 
-**The app key is inside your binary and can be extracted from it.** That is by
-design, and it is worth being precise about what it proves: a consent record
-from your app is attributable to a **registered app**, not to a **verified
-genuine install** of it. Device attestation (App Attest, Play Integrity) is
-tracked separately and is not built. Say the weaker thing in anything
-customer-facing.
+**The app key is inside your binary and can be extracted from it.** That is by design, and it is worth being precise about what it proves: a consent record from your app is attributable to a **registered app**, not to a **verified genuine install** of it. Device attestation (App Attest, Play Integrity) is tracked separately and is not built. Say the weaker thing in anything customer-facing.
 
 **Reinstalling the app shows the notice again.** The device identifier is a
 UUID we generate and keep in the Keychain — never IDFA, never the advertising
@@ -137,8 +133,7 @@ dashboard and running apps pick it up.
 
 **With no network and no cached config, no notice is shown and nothing is
 recorded.** An app that cannot show a notice must not process anything
-non-essential, which is the same state as "no consent". `onError` fires so you
-can log it.
+non-essential, which is the same state as "no consent". `onError` fires so you can log it.
 
 **Receipt and consent-history downloads do not work inside the app.** They are
 built for a browser and are tracked separately.
@@ -146,8 +141,6 @@ built for a browser and are tracked separately.
 ## Development
 
 ```bash
-node scripts/sync-ios-assets.mjs   # rebuild and re-copy the bundled assets
-cd mobile/ios
 xcodebuild test -scheme PrivacySurakshaConsent \
   -destination 'platform=iOS Simulator,name=iPhone 17'
 ```
@@ -155,6 +148,12 @@ xcodebuild test -scheme PrivacySurakshaConsent \
 `swift build` does not work and is not meant to: the package is iOS-only and
 imports UIKit and WebKit.
 
-Everything under `Sources/PrivacySurakshaConsent/Resources/` is generated. Do not
-edit it by hand — change `packages/banner` and re-run the sync. CI re-runs it
-and fails if what is committed does not match.
+Everything under `Sources/PrivacySurakshaConsent/Resources/` is generated
+upstream (from the web banner's source) and synced into this repo as part of
+release. Do not edit it by hand here.
+
+## License
+
+Proprietary. All rights reserved. See [LICENSE](LICENSE) — use of this
+software requires prior written permission from CloudZent Technology
+Services LLP (www.cloudzent.com).
