@@ -62,7 +62,7 @@ struct HTTPBridge {
             guard (200..<300).contains(http.statusCode) else {
                 // Includes row 384's 403. The page treats "http" as a
                 // definitive server refusal rather than something to retry.
-                return .failure("http")
+                return .failure("http", status: http.statusCode)
             }
             return .ok(data)
         } catch {

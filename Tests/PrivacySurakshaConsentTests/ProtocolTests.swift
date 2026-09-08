@@ -138,6 +138,22 @@ final class ProtocolTests: XCTestCase {
         let badResult = try XCTUnwrap(bad["result"] as? [String: Any])
         XCTAssertEqual(badResult["ok"] as? Bool, false)
         XCTAssertEqual(badResult["error"] as? String, "network")
+        // "network" never reached a server, so the wire form omits `status`
+        // entirely rather than sending an explicit null.
+        XCTAssertNil(badResult["status"])
+    }
+
+    /// The status code rides along on the wire only for an "http" failure
+    /// that actually reached a server — this is how the page tells a 404
+    /// apart from a real failure (declaration.ts's ensureDeclarationLoaded).
+    func testHttpResultCarriesStatusOnAnHttpFailure() throws {
+        let object = try decodeToObject(
+            HostMessage.httpResult(id: "r3", result: .failure("http", status: 404))
+        )
+        let result = try XCTUnwrap(object["result"] as? [String: Any])
+        XCTAssertEqual(result["ok"] as? Bool, false)
+        XCTAssertEqual(result["error"] as? String, "http")
+        XCTAssertEqual(result["status"] as? Int, 404)
     }
 
     // MARK: - Page -> host

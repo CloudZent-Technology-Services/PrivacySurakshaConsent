@@ -89,15 +89,34 @@ final class HTTPBridgeTests: XCTestCase {
     }
 
     /// The page understands exactly two error strings. A non-2xx is "http".
+    /// The status code itself rides along too — this is how the page (via
+    /// declaration.ts) tells a 404 apart from a real failure.
     func testANon2xxIsReportedAsHttp() async {
         let bridge = HTTPBridge(
             apiBase: apiBase, appKey: nil,
             session: StubHTTP([.success(status: 403, body: Data("{}".utf8))])
         )
-        guard case .failure(let kind) = await bridge.perform(spec()) else {
+        guard case .failure(let kind, let status) = await bridge.perform(spec()) else {
             return XCTFail("expected failure")
         }
         XCTAssertEqual(kind, "http", "403 from row 384 enforcement is an http failure")
+        XCTAssertEqual(status, 403)
+    }
+
+    /// A regression test for the status carried above: a 404 must be
+    /// distinguishable from any other http failure, because the page treats
+    /// "no cookie declaration published yet" (404) very differently from a
+    /// real server error.
+    func testA404CarriesItsStatusDistinctlyFromOtherHttpFailures() async {
+        let bridge = HTTPBridge(
+            apiBase: apiBase, appKey: nil,
+            session: StubHTTP([.success(status: 404, body: Data("{}".utf8))])
+        )
+        guard case .failure(let kind, let status) = await bridge.perform(spec()) else {
+            return XCTFail("expected failure")
+        }
+        XCTAssertEqual(kind, "http")
+        XCTAssertEqual(status, 404)
     }
 
     // MARK: - The path is page-supplied, therefore untrusted
@@ -118,12 +137,14 @@ final class HTTPBridgeTests: XCTestCase {
             http.requests.isEmpty,
             "\(why): no request may be attempted, got \(http.requests.compactMap(\.url))"
         )
-        guard case .failure(let kind) = result else {
+        guard case .failure(let kind, let status) = result else {
             return XCTFail("\(why): expected a failure result")
         }
         // "http", not "network": this shell REFUSED the request — nothing
         // failed in transport, so the page must treat it as definitive.
         XCTAssertEqual(kind, "http", why)
+        // No request was attempted, so there is no server status to carry.
+        XCTAssertNil(status, why)
     }
 
     func testAnAbsoluteURLPathIsRejected() async {
@@ -164,9 +185,10 @@ final class HTTPBridgeTests: XCTestCase {
         let bridge = HTTPBridge(
             apiBase: apiBase, appKey: nil, session: StubHTTP(alwaysOffline: true)
         )
-        guard case .failure(let kind) = await bridge.perform(spec()) else {
+        guard case .failure(let kind, let status) = await bridge.perform(spec()) else {
             return XCTFail("expected failure")
         }
         XCTAssertEqual(kind, "network")
+        XCTAssertNil(status, "a transport failure never reached a server, so it carries no status")
     }
 }

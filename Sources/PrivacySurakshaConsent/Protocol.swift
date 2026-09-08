@@ -42,7 +42,12 @@ struct HTTPRequestSpec {
 enum HTTPBridgeResult {
     case ok(Data)
     /// "http" or "network" — the only two values the page understands.
-    case failure(String)
+    /// `status` is populated only for an "http" failure that actually
+    /// reached the server (never for a locally-refused path, and never for
+    /// "network") — see packages/banner/src/types.ts's ApiResult, which this
+    /// mirrors. It is how the page tells a 404 ("nothing published yet")
+    /// apart from a real failure.
+    case failure(String, status: Int? = nil)
 }
 
 enum ProtocolError: Error {
@@ -138,8 +143,10 @@ enum HostMessage {
                 // testANonJSONHttpResultBodyStaysASuccess.
                 let value = (try? Self.jsonValue(from: data)) ?? NSNull()
                 object["result"] = ["ok": true, "data": value]
-            case let .failure(kind):
-                object["result"] = ["ok": false, "error": kind]
+            case let .failure(kind, status):
+                var payload: [String: Any] = ["ok": false, "error": kind]
+                if let status { payload["status"] = status }
+                object["result"] = payload
             }
         }
 
