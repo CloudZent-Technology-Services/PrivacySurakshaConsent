@@ -1,0 +1,74 @@
+{
+  "comment": "Canonical expiry and material-drift cases, shared by packages/banner/src/renewal.test.ts and every native shell's ConsentGate. See docs/superpowers/specs/2026-09-01-mobile-ios-shell-design.md section 4.4. The code is duplicated per platform; these cases are not. Changing semantics means changing this file, which fails every shell's suite until each is updated.",
+  "now": "2026-08-03T00:00:00.000Z",
+  "expiry": [
+    { "name": "within the window", "at": "2026-07-24T00:00:00.000Z", "validityDays": 180, "expired": false },
+    { "name": "older than the window", "at": "2026-01-15T00:00:00.000Z", "validityDays": 180, "expired": true },
+    { "name": "exactly at the boundary is not yet expired", "at": "2026-02-04T00:00:00.000Z", "validityDays": 180, "expired": false },
+    { "name": "one millisecond past the boundary is expired", "at": "2026-02-03T23:59:59.999Z", "validityDays": 180, "expired": true },
+    { "name": "zero validity fails closed", "at": "2026-08-03T00:00:00.000Z", "validityDays": 0, "expired": true },
+    { "name": "negative validity fails closed", "at": "2026-08-03T00:00:00.000Z", "validityDays": -5, "expired": true }
+  ],
+  "drift": [
+    {
+      "name": "no purpose carries materialSince",
+      "at": "2026-01-01T00:00:00.000Z",
+      "purposes": [{ "id": "a" }],
+      "drifted": []
+    },
+    {
+      "name": "decision postdates the material change",
+      "at": "2026-06-01T00:00:00.000Z",
+      "purposes": [{ "id": "a", "materialSince": "2026-03-01T00:00:00.000Z" }],
+      "drifted": []
+    },
+    {
+      "name": "decision predates the material change",
+      "at": "2026-01-01T00:00:00.000Z",
+      "purposes": [{ "id": "a", "materialSince": "2026-03-01T00:00:00.000Z" }],
+      "drifted": ["a"]
+    },
+    {
+      "name": "an exactly equal timestamp does not drift, the comparison is strict",
+      "at": "2026-03-01T00:00:00.000Z",
+      "purposes": [{ "id": "a", "materialSince": "2026-03-01T00:00:00.000Z" }],
+      "drifted": []
+    },
+    {
+      "name": "only the drifted subset is returned",
+      "at": "2026-02-01T00:00:00.000Z",
+      "purposes": [
+        { "id": "old", "materialSince": "2026-01-01T00:00:00.000Z" },
+        { "id": "new", "materialSince": "2026-05-01T00:00:00.000Z" },
+        { "id": "none" }
+      ],
+      "drifted": ["new"]
+    },
+    {
+      "name": "an empty purposes list drifts nothing",
+      "at": "2026-01-01T00:00:00.000Z",
+      "purposes": [],
+      "drifted": []
+    },
+    {
+      "name": "atServer is preferred over a device clock skewed into the future",
+      "at": "2099-01-01T00:00:00.000Z",
+      "atServer": "2026-01-01T00:00:00.000Z",
+      "purposes": [{ "id": "a", "materialSince": "2026-03-01T00:00:00.000Z" }],
+      "drifted": ["a"]
+    },
+    {
+      "name": "atServer is preferred even when it makes the decision NEWER",
+      "at": "2026-01-01T00:00:00.000Z",
+      "atServer": "2026-06-01T00:00:00.000Z",
+      "purposes": [{ "id": "a", "materialSince": "2026-03-01T00:00:00.000Z" }],
+      "drifted": []
+    },
+    {
+      "name": "falls back to the device clock when atServer is absent",
+      "at": "2026-01-01T00:00:00.000Z",
+      "purposes": [{ "id": "a", "materialSince": "2026-03-01T00:00:00.000Z" }],
+      "drifted": ["a"]
+    }
+  ]
+}

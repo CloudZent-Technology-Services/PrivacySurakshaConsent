@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Consent</title>
+    <style>
+      /* Transparent, edge to edge: the app's own content keeps rendering
+         underneath and the notice arrives over it. DPDP forbids
+         non-essential processing before consent, so the SDK's default state
+         is already "denied" and nothing is waiting on this document
+         (design §5). */
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+      }
+      body {
+        -webkit-text-size-adjust: 100%;
+      }
+    </style>
+    <script>
+      /* Installed before the bundle so a parse or start-up failure in the
+         bundle it loads still reaches the shell instead of hanging a blank
+         WebView. Transport order matches src/embedded/host.ts; duplicated
+         here rather than imported because the bundle may be the very thing
+         that failed to load. */
+      window.onerror = function (message, source, line) {
+        try {
+          var json = JSON.stringify({ type: 'error', message: String(message) + ' @' + String(line) });
+          if (window.CompliantAndroid) return window.CompliantAndroid.post(json);
+          if (window.ReactNativeWebView) return window.ReactNativeWebView.postMessage(json);
+          if (window.compliant) return window.compliant.postMessage(json);
+          window.webkit.messageHandlers.compliant.postMessage(json);
+        } catch (e) {
+          /* no second channel to report a broken channel on */
+        }
+      };
+    </script>
+  </head>
+  <body>
+    <!-- At the END of <body>, not in <head>: shadow.ts's createRoot() appends
+         to document.body, which does not exist yet during a <head> script.
+         The spike lost an entire run to this. -->
+    <script src="./cmp-embedded.js"></script>
+  </body>
+</html>
