@@ -19,12 +19,11 @@ Or in your `Package.swift`:
 
 ```swift
 dependencies: [
-    // TODO: replace <org>/<repo> with this package's actual GitHub location.
-    .package(url: "https://github.com/<org>/<repo>", from: "0.1.0"),
+    .package(url: "https://github.com/CloudZent-Technology-Services/PrivacySurakshaConsent", from: "0.1.0"),
 ],
 targets: [
     .target(name: "YourApp", dependencies: [
-        .product(name: "PrivacySurakshaConsent", package: "<repo>"),
+        .product(name: "PrivacySurakshaConsent", package: "PrivacySurakshaConsent"),
     ]),
 ]
 ```
