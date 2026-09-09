@@ -50,6 +50,23 @@ enum HTTPBridgeResult {
     case failure(String, status: Int? = nil)
 }
 
+/// What the page asked the shell to fetch and hand to the user via the share
+/// sheet. Mirrors `DownloadEvent` in packages/banner/src/embedded/protocol.ts.
+struct DownloadSpec {
+    let id: String
+    let method: String
+    let path: String
+    let body: Data?
+    let filename: String
+}
+
+/// Mirrors HTTPBridgeResult but carries no successful payload — the shell
+/// shares the file itself; the page only needs to know pass/fail.
+enum DownloadBridgeResult {
+    case ok
+    case failure(String, status: Int? = nil)
+}
+
 enum ProtocolError: Error {
     case malformedJSON
     case unknownEventType(String)
@@ -74,6 +91,7 @@ enum HostMessage {
     case view(CompliantView)
     case catalog(lang: String, catalog: Data?)
     case httpResult(id: String, result: HTTPBridgeResult)
+    case downloadResult(id: String, result: DownloadBridgeResult)
 
     /// The wire `type` this case carries. Exists so a serialisation failure
     /// can name WHICH message the page will never receive — "init" and "view"
@@ -85,6 +103,7 @@ enum HostMessage {
         case .view: return "view"
         case .catalog: return "catalog"
         case .httpResult: return "httpResult"
+        case .downloadResult: return "downloadResult"
         }
     }
 
@@ -148,6 +167,18 @@ enum HostMessage {
                 if let status { payload["status"] = status }
                 object["result"] = payload
             }
+
+        case let .downloadResult(id, result):
+            object["type"] = "downloadResult"
+            object["id"] = id
+            switch result {
+            case .ok:
+                object["result"] = ["ok": true]
+            case let .failure(kind, status):
+                var payload: [String: Any] = ["ok": false, "error": kind]
+                if let status { payload["status"] = status }
+                object["result"] = payload
+            }
         }
 
         let data = try JSONSerialization.data(withJSONObject: object, options: [])
@@ -175,6 +206,7 @@ enum PageEvent {
     case viewChanged(CompliantView)
     case catalogRequest(lang: String)
     case httpRequest(HTTPRequestSpec)
+    case download(DownloadSpec)
     case error(message: String)
 
     /// Outbound page messages always arrive as a JSON string — `postToHost`
@@ -232,6 +264,18 @@ enum PageEvent {
             return .httpRequest(
                 HTTPRequestSpec(id: id, method: method, path: path,
                                 body: try reEncode(message["body"]))
+            )
+
+        case "download":
+            guard
+                let id = message["id"] as? String,
+                let method = message["method"] as? String,
+                let path = message["path"] as? String,
+                let filename = message["filename"] as? String
+            else { throw ProtocolError.missingField("download") }
+            return .download(
+                DownloadSpec(id: id, method: method, path: path,
+                             body: try reEncode(message["body"]), filename: filename)
             )
 
         case "error":

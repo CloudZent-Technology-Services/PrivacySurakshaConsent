@@ -162,6 +162,7 @@ final class CompliantRuntime {
     private let cacheDirectory: URL
     private let now: () -> Date
     private let httpBridge: HTTPBridge
+    private let downloadBridge: DownloadBridge
     private let catalogReader = CatalogReader()
 
     init(
@@ -181,6 +182,10 @@ final class CompliantRuntime {
         self.now = now
         self.httpBridge = HTTPBridge(
             apiBase: configuration.apiBase, appKey: configuration.appKey, session: session
+        )
+        self.downloadBridge = DownloadBridge(
+            apiBase: configuration.apiBase, appKey: configuration.appKey,
+            session: session, directory: FileManager.default.temporaryDirectory
         )
         self.host = WebViewHost(
             factory: webViewFactory, bundle: .module,
@@ -336,6 +341,21 @@ final class CompliantRuntime {
                 let result = await bridge.perform(spec)
                 await MainActor.run {
                     self?.host.send(.httpResult(id: spec.id, result: result))
+                }
+            }
+
+        case let .download(spec):
+            let bridge = downloadBridge
+            Task { [weak self] in
+                let outcome = await bridge.perform(spec)
+                await MainActor.run {
+                    switch outcome {
+                    case let .ok(fileURL, _):
+                        self?.host.presentShareSheet(fileURL: fileURL)
+                        self?.host.send(.downloadResult(id: spec.id, result: .ok))
+                    case let .failure(kind, status):
+                        self?.host.send(.downloadResult(id: spec.id, result: .failure(kind, status: status)))
+                    }
                 }
             }
 

@@ -7,7 +7,10 @@ import Foundation
 final class StubHTTP: HTTPPerforming, @unchecked Sendable {
 
     enum Outcome {
-        case success(status: Int, body: Data)
+        /// `headers` defaults to empty so every existing call site — none of
+        /// which cares about response headers — is unaffected. DownloadBridge
+        /// is the first consumer to pass a real Content-Disposition value.
+        case success(status: Int, body: Data, headers: [String: String] = [:])
         case failure(Error)
         /// Never answers. This is how the suite proves that a code path does
         /// NOT wait on the network: a request that would be awaited hangs the
@@ -39,9 +42,9 @@ final class StubHTTP: HTTPPerforming, @unchecked Sendable {
         lock.unlock()
 
         switch outcome {
-        case let .success(status, body):
+        case let .success(status, body, headers):
             let response = HTTPURLResponse(
-                url: request.url!, statusCode: status, httpVersion: nil, headerFields: nil
+                url: request.url!, statusCode: status, httpVersion: nil, headerFields: headers
             )!
             return (body, response)
         case let .failure(error):

@@ -279,6 +279,20 @@ final class WebViewHost: NSObject {
         created.isHidden = true
         window = created
     }
+
+    /// Presents the OS share sheet for a downloaded file. Silent (no crash,
+    /// no report) when the window has no root view controller yet — the
+    /// only genuinely silent case here, same reasoning as `send`'s "no
+    /// WebView" early return.
+    func presentShareSheet(fileURL: URL) {
+        guard let controller = window?.rootViewController else { return }
+        let activityVC = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
+        if let popover = activityVC.popoverPresentationController {
+            popover.sourceView = controller.view
+            popover.sourceRect = CGRect(x: controller.view.bounds.midX, y: controller.view.bounds.midY, width: 0, height: 0)
+        }
+        controller.present(activityVC, animated: true)
+    }
 }
 
 // MARK: - Load failures
